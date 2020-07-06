@@ -1,0 +1,518 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="ADMIN_MENU01">
+    
+ <!-- ================================================== 
+                           발송현황
+ ====================================================-->
+  
+ 	<!-- 리스트 -->
+    <sql id="include0101DataList">
+    	WHERE 1 = 1
+    	<if test="searchValue != null and searchValue != '' ">
+	    	<if test="searchType == 'service_cd' ">
+	    		<if test="gubun != 'paper_less' ">
+					AND a.service_cd  like   '%' || #{searchValue} || '%'
+				</if>
+				<if test="gubun == 'paper_less' ">
+					AND a.msg_cd  like   '%' || #{searchValue} || '%'
+				</if>		
+			</if>
+			<if test="searchType == 'src_key' ">
+					AND a.src_key  like   '%' || #{searchValue} || '%'
+			</if>
+    	
+		</if>
+	
+		<if test="startDate != null and startDate != '' ">
+				AND a.ins_date  &gt;= to_date(#{startDate}, 'YYYY-MM-DD') 
+		</if>
+		
+		<if test="endDate != null and endDate != '' ">
+				AND a.ins_date  &lt;  to_date(#{endDate}, 'YYYY-MM-DD') + 1
+		</if>	
+		
+		<if test="success_yn != null and success_yn != '' ">
+				AND decode(b.mms_sndg_rslt_dvcd, '40', 'Y', 'N') = #{success_yn}
+		</if>
+		
+		<if test="open_yn != null and open_yn != '' ">
+				AND decode(b.mms_rdg_tmst, null, 'N', 'Y') = #{open_yn}
+		</if>
+		
+	</sql>
+
+ 	
+    <select id="sel0101DataListCnt" parameterType="java.util.HashMap" resultType="java.lang.Integer">
+			 SELECT count(*) cnt
+			<if test="gubun == 'open_api' ">
+					FROM  mts_object_data_api a
+					LEFT JOIN  mts_response_data_api b ON a.service_cd = b.service_cd AND a.src_key = b.src_key  
+			</if>
+			<if test="gubun == 'paper_less' ">
+					FROM  pl_mts_object_data_api  a
+					LEFT JOIN  pl_mts_response_data_api b ON a.biz_cd = b.biz_cd AND a.msg_cd = b.msg_cd  AND a.src_key = b.src_key
+			</if>
+			<if test="gubun == 'std' ">
+					FROM std_req_data  a
+					LEFT JOIN  std_response_data  b ON a.service_cd = b.service_cd AND a.src_key = b.src_key
+			</if>
+			<include refid="include0101DataList"/>		
+	</select> 
+    
+    <select id="sel0101DataList" parameterType="java.util.HashMap" resultType="com.paperless.common.util.CaseInsensitiveMap">
+			 SELECT * FROM (SELECT ROWNUM RN ,t1.* FROM (
+				 SELECT a.*
+				         , b.mms_rdg_tmst
+				         , b.mms_bsns_dvcd
+				         , decode(b.mms_rdg_tmst, null, 'N', 'Y') open_yn
+				         , decode(b.mms_sndg_rslt_dvcd, '40', 'Y', 'N') success_yn
+				       
+				         
+		    <if test="gubun != 'paper_less' ">		         
+				         , (select token_cre_date from mts_check_token_api c where a.service_cd = c.service_cd and a.src_key = c.src_key)  token_cre_date
+				         , ( SELECT  c.client_nm FROM  oauth_client_details c, client_service_cd  d WHERE c.client_id = d.client_id AND d.service_cd = a.service_cd AND rownum = 1 ) client_nm
+			</if>	         
+				         
+			<if test="gubun == 'open_api' ">
+					FROM  mts_object_data_api a
+					LEFT JOIN  mts_response_data_api b ON a.service_cd = b.service_cd AND a.src_key = b.src_key  
+			</if>
+			<if test="gubun == 'paper_less' ">
+					FROM  pl_mts_object_data_api  a
+					LEFT JOIN  pl_mts_response_data_api b ON a.biz_cd = b.biz_cd AND a.msg_cd = b.msg_cd  AND a.src_key = b.src_key
+			</if>
+			<if test="gubun == 'std' ">
+					FROM std_req_data  a
+					LEFT JOIN  std_response_data  b ON a.service_cd = b.service_cd AND a.src_key = b.src_key
+			</if>
+				<include refid="include0101DataList"/>		
+				ORDER BY a.ins_date DESC
+			) T1
+			WHERE ROWNUM &lt;= ${endNum}
+			) WHERE RN >= ${startNum}
+					
+				  
+
+	</select>
+    
+    <select id="get0101Data" parameterType="java.util.HashMap" resultType="com.paperless.common.util.CaseInsensitiveMap">
+			SELECT a.*
+			         , b.mms_sndg_rslt_dvcd
+			         , b.mms_rdg_tmst
+			         , decode(b.mms_rdg_tmst, null, 'N', 'Y') open_yn 
+			         , b.mms_bsns_dvcd
+			<if test="gubun == 'open_api' ">
+			        , ( SELECT  c.client_nm FROM  oauth_client_details c, client_service_cd  d WHERE c.client_id = d.client_id AND d.service_cd = a.service_cd AND rownum = 1 ) client_nm
+					FROM  mts_object_data_api a
+					LEFT JOIN  mts_response_data_api b ON a.service_cd = b.service_cd AND a.src_key = b.src_key 
+			</if>
+			<if test="gubun == 'paper_less' ">
+					FROM  pl_mts_object_data_api  a
+					LEFT JOIN  pl_mts_response_data_api b ON a.biz_cd = b.biz_cd AND a.msg_cd = b.msg_cd  AND a.src_key = b.src_key
+			</if>
+			<if test="gubun == 'std' ">
+			       , ( SELECT  c.client_nm FROM  oauth_client_details c, client_service_cd  d WHERE c.client_id = d.client_id AND d.service_cd = a.service_cd AND rownum = 1 ) client_nm
+					FROM std_req_data  a
+					LEFT JOIN  std_response_data  b ON a.service_cd = b.service_cd AND a.src_key = b.src_key
+			</if>
+			
+			
+			WHERE a.biz_cd = #{biz_cd}
+			   AND a.msg_cd = #{msg_cd}
+               AND a.make_d = #{make_d}
+               AND a.send_seq = #{send_seq}
+               AND a.instant_seq = #{instant_seq}
+               AND a.seq_no = #{seq_no}
+	</select>
+	
+	
+<!-- ================================================== 
+                          발송결과
+ ====================================================-->
+  
+ 	<!-- 리스트 -->
+    <sql id="include0102DataList">
+    	
+    	<if test="searchValue != null and searchValue != '' ">
+	    	<if test="searchType == 'service_cd' ">
+	    		<if test="gubun != 'paper_less' ">
+					AND a.service_cd  like   '%' || #{searchValue} || '%'
+				</if>
+				<if test="gubun == 'paper_less' ">
+					AND a.msg_cd  like   '%' || #{searchValue} || '%'
+				</if>		
+			</if>
+			<if test="searchType == 'src_key' ">
+					AND a.src_key  like   '%' || #{searchValue} || '%'
+			</if>
+    	
+		</if>
+	
+		<if test="startDate != null and startDate != '' ">
+				AND a.ins_date  &gt;= to_date(#{startDate}, 'YYYY-MM-DD') 
+		</if>
+		
+		<if test="endDate != null and endDate != '' ">
+				AND a.ins_date  &lt;  to_date(#{endDate}, 'YYYY-MM-DD') + 1
+		</if>	
+		
+		<if test="success_yn != null and success_yn != '' ">
+				AND decode(b.mms_sndg_rslt_dvcd, '40', 'Y', 'N') = #{success_yn}
+		</if>
+		
+		<if test="open_yn != null and open_yn != '' ">
+				AND decode(b.mms_rdg_tmst, null, 'N', 'Y') = #{open_yn}
+		</if>
+		
+	</sql>
+
+ 	
+    <select id="sel0102DataListCnt" parameterType="java.util.HashMap" resultType="java.lang.Integer">
+			 SELECT count(*) cnt
+			<if test="gubun == 'open_api' ">
+					FROM  mts_object_data_api a
+					LEFT JOIN  mts_response_data_api b ON a.service_cd = b.service_cd AND a.src_key = b.src_key  
+			</if>
+			<if test="gubun == 'paper_less' ">
+					FROM  pl_mts_object_data_api  a
+					LEFT JOIN  pl_mts_response_data_api b ON a.biz_cd = b.biz_cd AND a.msg_cd = b.msg_cd  AND a.src_key = b.src_key
+			</if>
+			<if test="gubun == 'std' ">
+					FROM std_req_data  a
+					LEFT JOIN  std_response_data  b ON a.service_cd = b.service_cd AND a.src_key = b.src_key
+			</if>
+			
+			WHERE b.src_key is not null
+			
+			<include refid="include0102DataList"/>		
+	</select> 
+    
+    <select id="sel0102DataList" parameterType="java.util.HashMap" resultType="com.paperless.common.util.CaseInsensitiveMap">
+			 SELECT * FROM (SELECT ROWNUM RN ,t1.* FROM (
+				 SELECT a.*
+				         , b.prcs_dt
+				         , b.mms_sndg_tmst
+				         , b.mms_rcv_tmst
+				         , b.mms_rdg_tmst
+				         , b.ins_date rst_date
+				         , b.mms_bsns_dvcd
+				         , decode(b.mms_rdg_tmst, null, 'N', 'Y') open_yn
+				         , decode(b.mms_sndg_rslt_dvcd, '40', 'Y', 'N') success_yn
+				         
+		    <if test="gubun != 'paper_less' ">		         
+				         , (select token_cre_date from mts_check_token_api c where a.service_cd = c.service_cd and a.src_key = c.src_key)  token_cre_date
+			</if>	         
+				         
+			<if test="gubun == 'open_api' ">
+					FROM  mts_object_data_api a
+					LEFT JOIN  mts_response_data_api b ON a.service_cd = b.service_cd AND a.src_key = b.src_key  
+			</if>
+			<if test="gubun == 'paper_less' ">
+					FROM  pl_mts_object_data_api  a
+					LEFT JOIN  pl_mts_response_data_api b ON a.biz_cd = b.biz_cd AND a.msg_cd = b.msg_cd  AND a.src_key = b.src_key
+			</if>
+			<if test="gubun == 'std' ">
+					FROM std_req_data  a
+					LEFT JOIN  std_response_data  b ON a.service_cd = b.service_cd AND a.src_key = b.src_key
+			</if>
+				WHERE b.src_key is not null
+			
+				<include refid="include0102DataList"/>		
+				ORDER BY a.ins_date DESC
+			) T1
+			WHERE ROWNUM &lt;= ${endNum}
+			) WHERE RN >= ${startNum}
+					
+				  
+
+	</select>
+    
+<!-- ================================================== 
+                          유통증명등록
+ ====================================================-->
+  
+ 	<!-- 리스트 -->
+    <sql id="include0103DataList">
+    	WHERE 1 = 1
+    	
+    	<if test="searchValue != null and searchValue != '' ">
+	    	<if test="searchType == 'service_cd' ">
+					AND a.service_cd  like   '%' || #{searchValue} || '%'
+			</if>
+			
+			<if test="searchType == 'src_key' ">
+					AND a.src_key  like   '%' || #{searchValue} || '%'
+			</if>
+    	
+		</if>
+	
+		<if test="startDate != null and startDate != '' ">
+				AND a.ins_date  &gt;= to_date(#{startDate}, 'YYYY-MM-DD') 
+		</if>
+		
+		<if test="endDate != null and endDate != '' ">
+				AND a.ins_date  &lt;  to_date(#{endDate}, 'YYYY-MM-DD') + 1
+		</if>	
+		
+		
+	</sql>
+
+ 	
+    <select id="sel0103DataListCnt" parameterType="java.util.HashMap" resultType="java.lang.Integer">
+			 SELECT count(*) cnt
+			 FROM pl_mns_doc_issue a
+			
+			<include refid="include0103DataList"/>		
+	</select> 
+    
+    <select id="sel0103DataList" parameterType="java.util.HashMap" resultType="com.paperless.common.util.CaseInsensitiveMap">
+			 SELECT * FROM (SELECT ROWNUM RN ,t1.* FROM (
+				 SELECT a.*
+				 FROM pl_mns_doc_issue a
+		    
+				<include refid="include0103DataList"/>
+						
+				ORDER BY a.ins_date DESC
+			) T1
+			WHERE ROWNUM &lt;= ${endNum}
+			) WHERE RN >= ${startNum}
+					
+				  
+
+	</select>
+	
+     <!-- ================================================== 
+                           개통 통지서
+	 ====================================================-->
+	<!-- 리스트 -->
+    <sql id="include0104DataList">
+    	WHERE 1 = 1
+    	<if test="searchValue != null and searchValue != '' ">
+	    	<if test="searchType == 'usr_nm' ">
+					AND a.usr_nm  like   '%' || #{searchValue} || '%'
+			</if>
+			<if test="searchType == 'msg_cd' ">
+					AND a.msg_cd  like   '%' || #{searchValue} || '%'
+			</if>
+    	
+		</if>
+	
+		<if test="startDate != null and startDate != '' ">
+				AND a.ins_date  &gt;= to_date(#{startDate}, 'YYYY-MM-DD') 
+		</if>
+		
+		<if test="endDate != null and endDate != '' ">
+				AND a.ins_date  &lt;  to_date(#{endDate}, 'YYYY-MM-DD') + 1
+		</if>		
+		
+	</sql>
+
+ 	
+    <select id="sel0104DataListCnt" parameterType="java.util.HashMap" resultType="java.lang.Integer">
+			 SELECT count(*) cnt
+			 FROM  pl_mns_open a
+			<include refid="include0104DataList"/>		
+	</select> 
+    
+    <select id="sel0104DataList" parameterType="java.util.HashMap" resultType="com.paperless.common.util.CaseInsensitiveMap">
+			 SELECT * FROM (SELECT ROWNUM RN ,t1.* FROM (
+				 SELECT a.*
+				FROM  pl_mns_open  a
+				<include refid="include0104DataList"/>		
+				ORDER BY a.ins_date DESC
+			) T1
+			WHERE ROWNUM &lt;= ${endNum}
+			) WHERE RN >= ${startNum}
+					
+				  
+
+	</select>
+    
+    <select id="get0104Data" parameterType="java.util.HashMap" resultType="com.paperless.common.util.CaseInsensitiveMap">
+			SELECT a.*
+			FROM  pl_mns_open  a
+			WHERE a.mns_open_no = #{mns_open_no}
+	</select>
+	
+	
+	 <!-- ================================================== 
+                           사업자공인전자주소등록
+	 ====================================================-->
+	<!-- 리스트 -->
+    <sql id="include0105DataList">
+    	WHERE 1 = 1
+    	<if test="searchValue != null and searchValue != '' ">
+	    	<if test="searchType == 'usr_nm' ">
+					AND a.usr_nm  like   '%' || #{searchValue} || '%'
+			</if>
+			<if test="searchType == 'msg_cd' ">
+					AND a.msg_cd  like   '%' || #{searchValue} || '%'
+			</if>
+    	
+		</if>
+	
+		<if test="startDate != null and startDate != '' ">
+				AND a.ins_date  &gt;= to_date(#{startDate}, 'YYYY-MM-DD') 
+		</if>
+		
+		<if test="endDate != null and endDate != '' ">
+				AND a.ins_date  &lt;  to_date(#{endDate}, 'YYYY-MM-DD') + 1
+		</if>		
+		
+	</sql>
+
+ 	
+    <select id="sel0105DataListCnt" parameterType="java.util.HashMap" resultType="java.lang.Integer">
+			 SELECT count(*) cnt
+			 FROM  pl_mns_kces_biz a
+			<include refid="include0105DataList"/>		
+	</select> 
+    
+    <select id="sel0105DataList" parameterType="java.util.HashMap" resultType="com.paperless.common.util.CaseInsensitiveMap">
+			 SELECT * FROM (SELECT ROWNUM RN ,t1.* FROM (
+				SELECT a.*
+				        , decode(gubun, '1', '신규', '2', '수정') gubun_nm
+				FROM  pl_mns_kces_biz  a
+				<include refid="include0105DataList"/>		
+				ORDER BY a.ins_date DESC
+			) T1
+			WHERE ROWNUM &lt;= ${endNum}
+			) WHERE RN >= ${startNum}
+					
+				  
+
+	</select>
+    
+    <select id="get0105Data" parameterType="java.util.HashMap" resultType="com.paperless.common.util.CaseInsensitiveMap">
+			SELECT a.*
+			FROM  pl_mns_kces_biz  a
+			WHERE a.kces_biz_no = #{kces_biz_no}
+	</select>
+	
+	
+	 <!-- ================================================== 
+                           개인공인전자주소등록
+	 ====================================================-->
+	<!-- 리스트 -->
+    <sql id="include0106DataList">
+    	WHERE 1 = 1
+    	<if test="searchValue != null and searchValue != '' ">
+	    	<if test="searchType == 'usr_nm' ">
+					AND a.usr_nm  like   '%' || #{searchValue} || '%'
+			</if>
+			<if test="searchType == 'msg_cd' ">
+					AND a.msg_cd  like   '%' || #{searchValue} || '%'
+			</if>
+    	
+		</if>
+	
+		<if test="startDate != null and startDate != '' ">
+				AND a.ins_date  &gt;= to_date(#{startDate}, 'YYYY-MM-DD') 
+		</if>
+		
+		<if test="endDate != null and endDate != '' ">
+				AND a.ins_date  &lt;  to_date(#{endDate}, 'YYYY-MM-DD') + 1
+		</if>		
+		
+	</sql>
+
+ 	
+    <select id="sel0106DataListCnt" parameterType="java.util.HashMap" resultType="java.lang.Integer">
+			 SELECT count(*) cnt
+			 FROM  pl_mns_kces_user a
+			<include refid="include0106DataList"/>		
+	</select> 
+    
+    <select id="sel0106DataList" parameterType="java.util.HashMap" resultType="com.paperless.common.util.CaseInsensitiveMap">
+			 SELECT * FROM (SELECT ROWNUM RN ,t1.* FROM (
+				 SELECT a.*
+				      , decode(gubun, '1', '신규', '2', '수정', '3', '탈퇴', '4', '재등록') gubun_nm
+				FROM  pl_mns_kces_user  a
+				<include refid="include0106DataList"/>		
+				ORDER BY a.ins_date DESC
+			) T1
+			WHERE ROWNUM &lt;= ${endNum}
+			) WHERE RN >= ${startNum}
+					
+				  
+
+	</select>
+    
+    <select id="get0106Data" parameterType="java.util.HashMap" resultType="com.paperless.common.util.CaseInsensitiveMap">
+			SELECT a.*
+			FROM  pl_mns_kces_user  a
+			WHERE a.kces_user_no = #{kces_user_no}
+	</select>
+	
+	
+	
+	 <!-- ================================================== 
+                           유통증명발급신청
+	 ====================================================-->
+	<!-- 리스트 -->
+    <sql id="include0107DataList">
+    	WHERE 1 = 1
+    	<if test="searchValue != null and searchValue != '' ">
+	    	<if test="searchType == 'msg_cd' ">
+					AND a.msg_cd  like   '%' || #{searchValue} || '%'
+			</if>
+			<if test="searchType == 'srckey' ">
+					AND a.srckey  like   '%' || #{searchValue} || '%'
+			</if>
+    	
+		</if>
+	
+		<if test="startDate != null and startDate != '' ">
+				AND a.ins_date  &gt;= to_date(#{startDate}, 'YYYY-MM-DD') 
+		</if>
+		
+		<if test="endDate != null and endDate != '' ">
+				AND a.ins_date  &lt;  to_date(#{endDate}, 'YYYY-MM-DD') + 1
+		</if>		
+		
+	</sql>
+
+ 	
+    <select id="sel0107DataListCnt" parameterType="java.util.HashMap" resultType="java.lang.Integer">
+			 SELECT count(*) cnt
+			 FROM  edoc_cert_req_dtls  a
+				LEFT JOIN edoc_cert_result b  ON a.biz_cd = b.biz_cd AND a.msg_cd = b.msg_cd AND a.req_d = b.req_d AND a.req_seq = b.req_seq AND a.src_key = b.src_key
+			
+			<include refid="include0107DataList"/>		
+	</select> 
+    
+    <select id="sel0107DataList" parameterType="java.util.HashMap" resultType="com.paperless.common.util.CaseInsensitiveMap">
+			 SELECT * FROM (SELECT ROWNUM RN ,t1.* FROM (
+				 SELECT a.*
+				         , (select data_cnt from edoc_cert_req c  where a.biz_cd = c.biz_cd AND a.msg_cd = c.msg_cd AND a.req_d = c.req_d AND a.req_seq = c.req_seq ) as data_cnt
+				         , decode(a.cert_type, '1', 'KASA발급', '2', '모바일통지 송수신 증명서', a.cert_type) as cert_type_nm
+				         , decode(b.cert_result, '00', '정상', '11','증명서미등록자료', b.cert_result) as cert_result_nm
+				         , b.cert_result_msg
+				         , b.rsp_date
+				FROM  edoc_cert_req_dtls  a
+				LEFT JOIN edoc_cert_result b  ON a.biz_cd = b.biz_cd AND a.msg_cd = b.msg_cd AND a.req_d = b.req_d AND a.req_seq = b.req_seq AND a.src_key = b.src_key
+				
+				<include refid="include0107DataList"/>		
+				ORDER BY a.ins_date DESC
+			) T1
+			WHERE ROWNUM &lt;= ${endNum}
+			) WHERE RN >= ${startNum}
+					
+				  
+
+	</select>
+    
+    <select id="get0107Data" parameterType="java.util.HashMap" resultType="com.paperless.common.util.CaseInsensitiveMap">
+			SELECT a.*
+			FROM  edoc_cert_req  a
+			WHERE a.mns_open_no = #{mns_open_no}
+	</select>
+	
+    
+
+		
+</mapper>

@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper
+    PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+
+<mapper namespace="ADMIN_COMMON">
+
+   
+<!-- =================================================== 
+                             USER 정보
+ =====================================================-->      
+    
+    <!-- user 정보 가져오기 -->
+    <select id="selUserInfo" parameterType="java.util.HashMap" resultType="com.paperless.common.util.CaseInsensitiveMap" >
+		SELECT a.*
+		        , nvl(pw_fault_cnt, 0) fault_cnt 
+		        , sysdate login_date
+		FROM com_admin_user a 
+		WHERE  UPPER(user_id) = UPPER(#{user_id})
+		  AND  nvl(use_yn, 'N') = 'Y'   
+	</select>
+	
+
+    <update id="upPwFaultCnt" parameterType="java.util.HashMap" >
+   		UPDATE  com_admin_user 
+		SET 
+		 	<if test="pw_check == 'false'">
+               pw_fault_cnt = nvl(pw_fault_cnt, 0) + 1
+           </if>
+		   <if test="pw_check == '' or pw_check == null ">
+                pw_fault_cnt = 0
+              , last_login_date = sysdate 
+           </if>
+		WHERE  UPPER(user_id) = UPPER(#{user_id})
+	</update>
+	
+    
+ <!-- =================================================== 
+                           문서코드 가져오기
+ =====================================================-->   
+
+ <!-- 문서명  -->
+    <select id="selOrgList" parameterType="java.util.HashMap" resultType="com.paperless.common.util.CaseInsensitiveMap" >
+		SELECT a.client_id, a.client_nm 
+		FROM  oauth_client_details a
+		        , client_service_cd  b
+		WHERE a.client_id = b.client_id
+		 <!--   AND b.service_cd = 'svc_cd1'   -->
+	</select>
+	
+</mapper>
